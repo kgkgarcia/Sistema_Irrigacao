@@ -1,5 +1,5 @@
 
-Iniciar o Servidor:
+1. Iniciar o Servidor:
 node \Server\server.js
 ![image](https://github.com/user-attachments/assets/f4cbe0a3-8734-417f-bcf8-c0e9d3b790ae)
 ![image](https://github.com/user-attachments/assets/15b0ca3c-5463-43ce-91d6-c4a84fe0c31d)
