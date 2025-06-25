@@ -4,7 +4,7 @@
 Para iniciar o servidor, execute o seguinte comando no terminal:
 
 ```bash
-node Server/server.js
+node Servidor/server.js
 ```
 
 ![image](https://github.com/user-attachments/assets/f4cbe0a3-8734-417f-bcf8-c0e9d3b790ae)
