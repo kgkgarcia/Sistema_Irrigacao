@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard de Irrigação</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: #f0f4f7;
+            padding: 20px;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+        }
+
+        .container {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            margin-top: 20px;
+        }
+
+        #chartContainer {
+            width: 60%;
+        }
+
+        #controls {
+            margin-left: 20px;
+        }
+
+        button {
+            padding: 15px;
+            font-size: 16px;
+            margin: 10px 0;
+            cursor: pointer;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        .alert {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: bold;
+            display: none;
+            /* Oculto por padrão */
+        }
+
+        .alert.low {
+            background-color: #f8d7da;
+            /* Vermelho claro */
+            color: #721c24;
+        }
+
+        .alert.high {
+            background-color: #cce5ff;
+            /* Azul claro */
+            color: #004085;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Dashboard de Irrigação</h1>
+
+    <!-- Status do sistema -->
+    <div id="statusWater" class="status">Status: Desconhecido</div>
+    <div id="currentHumidity" class="status">Humidade Atual: Desconhecida</div>
+
+    <!-- Container principal -->
+    <div class="container">
+        <!-- Gráfico de Humidade -->
+        <div id="chartContainer">
+            <canvas id="humidityChart"></canvas>
+        </div>
+
+        <!-- Controles para irrigação -->
+        <div id="controls">
+            <button id="turnOnWater">Ligar Água</button>
+            <button id="turnOffWater">Desligar Água</button>
+        </div>
+    </div>
+
+    <!-- Alerta -->
+    <div id="alertMessage" class="alert"></div>
+
+    <script>
+        const serverUrl = 'http://192.168.1.100:3000';
+        const humidityChart = new Chart(document.getElementById('humidityChart'), {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Nível de Humidade (%)',
+                    data: [],
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    tension: 0.1
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    x: { title: { display: true, text: 'Tempo' } },
+                    y: { title: { display: true, text: 'Humidade (%)' }, beginAtZero: true }
+                }
+            }
+        });
+
+        document.getElementById('turnOnWater').addEventListener('click', () => {
+            fetch(`${serverUrl}/control`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'on' })
+            }).then(() => updateWaterStatus());
+        });
+
+        document.getElementById('turnOffWater').addEventListener('click', () => {
+            fetch(`${serverUrl}/control`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'off' })
+            }).then(() => updateWaterStatus());
+        });
+
+        function updateWaterStatus() {
+            fetch(`${serverUrl}/control`)
+                .then(response => response.text())
+                .then(status => {
+                    const statusWater = document.getElementById('statusWater');
+                    statusWater.textContent = `Status: Água ${status === 'on' ? 'Ligada' : 'Desligada'}`;
+                });
+        }
+
+        function updateChart() {
+            fetch(`${serverUrl}/sensor`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.length > 0) {
+                        // Atualiza o gráfico
+                        humidityChart.data.labels = data.map(item => new Date(item.time).toLocaleTimeString());
+                        humidityChart.data.datasets[0].data = data.map(item => item.humidity);
+                        humidityChart.update();
+        
+                        // Exibe a Humidade atual
+                        const latest = data[data.length - 1]; // Último dado
+                        const currentHumidity = document.getElementById('currentHumidity');
+                        currentHumidity.textContent = `Humidade Atual: ${latest.humidity}%`;
+        
+                        // Avaliação de alerta local
+                        const alertMessage = document.getElementById('alertMessage');
+                        if (latest.humidity < 30) {
+                            alertMessage.textContent = 'Humidade baixa! Considere ligar a água.';
+                            alertMessage.style.display = 'block';
+                            alertMessage.className = 'alert low';
+                        } else if (latest.humidity > 70) {
+                            alertMessage.textContent = 'Humidade alta! Considere desligar a água.';
+                            alertMessage.style.display = 'block';
+                            alertMessage.className = 'alert high';
+                        } else {
+                            alertMessage.style.display = 'none'; // Oculta o alerta
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Erro ao atualizar gráfico ou alerta:', error);
+                });
+        }
+        
+
+        setInterval(updateChart, 5000); // Atualiza o gráfico a cada 5 segundos
+        setInterval(updateWaterStatus, 2000); // Atualiza o status da água a cada 2 segundos
+
+        // Atualizações iniciais
+        updateChart();
+        updateWaterStatus();
+    </script>
+</body>
+
+</html>
